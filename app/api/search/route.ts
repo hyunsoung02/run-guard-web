@@ -8,7 +8,7 @@ const inputSchema = z.object({
 });
 
 const logSearch = (details: Record<string, unknown>) => {
-  if (process.env.NODE_ENV !== 'production') console.info('[PLACE_SEARCH]', details);
+  if (process.env.NODE_ENV === 'development') console.info('[PLACE_SEARCH]', details);
 };
 
 export async function POST(request: Request) {

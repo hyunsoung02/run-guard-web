@@ -77,7 +77,7 @@ export default function RunGuardMap({ location, candidate, actualRoute, progress
       const currentCoordinate: LngLat | null = progressCoordinateRef.current ?? (currentLocation ? [currentLocation.longitude, currentLocation.latitude] : null);
       if (currentCoordinate) {
         if (!markerRef.current) {
-          const element = document.createElement('div'); element.className = 'user-location-marker'; element.setAttribute('aria-label', '현재 위치');
+          const element = document.createElement('div'); element.className = 'user-location-marker'; element.setAttribute('role', 'img'); element.setAttribute('aria-label', '현재 위치');
           markerRef.current = new maplibregl.Marker({ element }).setLngLat(currentCoordinate).addTo(map);
         } else markerRef.current.setLngLat(currentCoordinate);
       }
@@ -120,5 +120,5 @@ export default function RunGuardMap({ location, candidate, actualRoute, progress
 
   useEffect(() => { locationRef.current = location; progressCoordinateRef.current = progressCoordinate; candidateRef.current = candidate; actualRouteRef.current = actualRoute; followUserRef.current = followUser; followChangeRef.current = onFollowChange; if (!candidate) lastFitCandidateRef.current = null; syncRef.current(); }, [location, progressCoordinate, candidate, actualRoute, followUser, onFollowChange]);
 
-  return <div ref={containerRef} className="map-canvas" aria-label="RUN Guard 코스 지도" />;
+  return <div ref={containerRef} className="map-canvas" role="region" aria-label="RUN Guard 코스 지도" />;
 }
