@@ -4,7 +4,7 @@ RUN Guard는 현재 위치에서 목표 거리의 왕복 러닝 코스를 추천
 
 ## Android MVP와 Web의 관계
 
-기존 Android의 캐릭터, 라임 색상, RUN 중심 탐색, 지도 오버레이, 5/7/10km 흐름, 러닝 상태, 기록과 설정 의도를 유지했습니다. React Native UI, Expo Location, React Navigation, MapLibre React Native, AsyncStorage는 각각 반응형 HTML/CSS, Browser Geolocation, 공유 React 상태, MapLibre GL JS, localStorage로 다시 구현했습니다. Android 마이그레이션 전수표는 [`docs/WEB_MIGRATION.md`](docs/WEB_MIGRATION.md)에 있습니다.
+기존 Android의 캐릭터, 라임 색상, RUN 중심 탐색, 지도 오버레이, 목표 거리 흐름, 러닝 상태, 기록과 설정 의도를 유지했습니다. React Native UI, Expo Location, React Navigation, MapLibre React Native, AsyncStorage는 각각 반응형 HTML/CSS, Browser Geolocation, 공유 React 상태, MapLibre GL JS, localStorage로 다시 구현했습니다. Android 마이그레이션 전수표는 [`docs/WEB_MIGRATION.md`](docs/WEB_MIGRATION.md)에 있습니다.
 
 ## 핵심 원칙
 
@@ -12,7 +12,7 @@ RUN Guard는 현재 위치에서 목표 거리의 왕복 러닝 코스를 추천
 
 규칙 기반 영역:
 
-- ORS 보행 경로를 이용한 5/7/10km 왕복 코스 후보 생성
+- ORS 보행 경로를 이용한 1~20km 단계형 왕복 코스 후보 생성
 - Android와 같은 3방향 후보, 최대 3회 거리 보정, 200m 또는 3% 허용오차
 - 거리 정확도 점수
 - KoROAD 보행노인 사고다발지역과 경로 사이의 거리, 사고 건수 및 거리에 따른 상대 안전도

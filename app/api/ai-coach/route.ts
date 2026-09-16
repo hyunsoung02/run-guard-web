@@ -6,7 +6,7 @@ const planSchema = z.object({
   sessions: z.array(z.object({ day: z.string().min(1).max(20), type: z.string().min(1).max(40), distanceKm: z.number().min(0).max(50), intensity: z.string().min(1).max(40), description: z.string().min(1).max(200) })).min(1).max(7),
   coachComment: z.string().min(1).max(400), safetyNote: z.string().min(1).max(300),
 });
-const inputSchema = z.object({ message: z.string().trim().min(1).max(800), history: z.array(z.object({ role: z.enum(['user', 'assistant']), text: z.string().max(1200), plan: planSchema.optional() })).max(12), records: z.array(z.object({ distanceKm: z.number(), durationSeconds: z.number(), averagePaceSecondsPerKm: z.number().nullable(), date: z.string() })).max(10), currentPlan: planSchema.nullable().optional() });
+const inputSchema = z.object({ message: z.string().trim().min(1).max(800), history: z.array(z.object({ role: z.enum(['user', 'assistant']), text: z.string().max(1200), plan: planSchema.optional() })).max(12), records: z.array(z.object({ distanceKm: z.number(), durationSeconds: z.number(), averagePaceSecondsPerKm: z.number().nullable(), date: z.string() })).max(10), currentPlan: planSchema.nullable().optional(), targetDistanceKm: z.number().int().min(1).max(20).optional() });
 const buckets = new Map<string, { count: number; resetAt: number }>();
 
 type AiErrorCategory = 'not_configured' | 'bad_request' | 'unauthorized' | 'forbidden' | 'model_not_found' | 'rate_limited' | 'upstream_5xx' | 'timeout' | 'network' | 'malformed_response';

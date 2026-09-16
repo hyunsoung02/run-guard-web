@@ -38,6 +38,122 @@ input:focus-visible {
   min-height: 44px;
 }
 
+.distance-slider {
+  margin: 4px 0 18px;
+}
+
+.distance-slider-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 36px;
+}
+
+.distance-slider-heading label {
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.distance-slider-heading output {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  min-width: 64px;
+  justify-content: flex-end;
+  color: var(--forest);
+  font-variant-numeric: tabular-nums;
+}
+
+.distance-slider-heading output strong {
+  font-size: 1.65rem;
+  line-height: 1;
+}
+
+.distance-slider-heading output span {
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.distance-slider input[type='range'] {
+  width: 100%;
+  height: 44px;
+  margin: 0;
+  padding: 0;
+  appearance: none;
+  -webkit-appearance: none;
+  background: transparent;
+  accent-color: var(--lime-dark);
+  cursor: pointer;
+  touch-action: pan-y;
+}
+
+.distance-slider input[type='range']::-webkit-slider-runnable-track {
+  height: 6px;
+  border-radius: 999px;
+  background: linear-gradient(to right, var(--lime) 0 var(--distance-progress), #e2e5dc var(--distance-progress) 100%);
+}
+
+.distance-slider input[type='range']::-webkit-slider-thumb {
+  width: 22px;
+  height: 22px;
+  margin-top: -8px;
+  appearance: none;
+  -webkit-appearance: none;
+  border: 3px solid #fff;
+  border-radius: 50%;
+  background: var(--lime-dark);
+  box-shadow: 0 2px 7px rgba(58, 77, 7, 0.28);
+}
+
+.distance-slider input[type='range']::-moz-range-track {
+  height: 6px;
+  border-radius: 999px;
+  background: #e2e5dc;
+}
+
+.distance-slider input[type='range']::-moz-range-progress {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--lime);
+}
+
+.distance-slider input[type='range']::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border: 3px solid #fff;
+  border-radius: 50%;
+  background: var(--lime-dark);
+  box-shadow: 0 2px 7px rgba(58, 77, 7, 0.28);
+}
+
+.distance-slider input[type='range']:focus-visible {
+  outline-offset: 0;
+  border-radius: 12px;
+}
+
+.distance-slider-ticks {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  margin-top: -4px;
+  color: #858880;
+  font-size: 0.65rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.distance-slider-ticks span {
+  text-align: center;
+}
+
+.distance-slider-ticks span:first-child {
+  text-align: left;
+}
+
+.distance-slider-ticks span:last-child {
+  text-align: right;
+}
+
 .candidate-tabs button,
 .place-results button,
 .ai-error button {
@@ -56,7 +172,6 @@ input:focus-visible {
 .run-button,
 .location-row > button,
 .search-box button,
-.distance-options button,
 .candidate-tabs button,
 .quick-prompts button,
 .running-controls button,
@@ -73,7 +188,6 @@ input:focus-visible {
 .run-button:active:not(:disabled),
 .location-row > button:active:not(:disabled),
 .search-box button:active:not(:disabled),
-.distance-options button:active:not(:disabled),
 .candidate-tabs button:active:not(:disabled),
 .quick-prompts button:active:not(:disabled),
 .running-controls button:active:not(:disabled),
@@ -106,7 +220,6 @@ input:focus-visible {
 .route-setup-card > label,
 .location-row > button,
 .search-box button,
-.distance-options button,
 .candidate-tabs button,
 .quick-prompts button,
 .menu-section button,

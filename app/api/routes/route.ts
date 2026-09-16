@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { destinationPoint, distanceAccuracyScore, distancePointToRouteM, recommendationScore, safetyScoreFromWarnings } from '@/lib/domain';
+import { destinationPoint, distanceAccuracyScore, distancePointToRouteM, MAX_TARGET_DISTANCE_KM, MIN_TARGET_DISTANCE_KM, recommendationScore, safetyScoreFromWarnings } from '@/lib/domain';
 import type { LngLat, NavigationStep, WarningPoint } from '@/types/run-guard';
 
 const inputSchema = z.object({
   start: z.tuple([z.number().min(-180).max(180), z.number().min(-90).max(90)]),
-  targetDistanceM: z.union([z.literal(5000), z.literal(7000), z.literal(10000)]),
+  targetDistanceM: z.number().int().min(MIN_TARGET_DISTANCE_KM * 1000).max(MAX_TARGET_DISTANCE_KM * 1000).multipleOf(1000),
   safetyPoints: z.array(z.object({ id: z.string(), coordinate: z.tuple([z.number(), z.number()]), name: z.string(), accidentCount: z.number(), deathCount: z.number().optional(), seriousInjuryCount: z.number().optional() })).max(200).default([]),
   safetyAvailable: z.boolean().default(false),
 });

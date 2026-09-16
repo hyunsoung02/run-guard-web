@@ -10,9 +10,17 @@ export const OFF_ROUTE_DISTANCE_M = 60;
 export const ROUTE_DISTANCE_TOLERANCE_M = 200;
 export const ROUTE_DISTANCE_TOLERANCE_RATIO = 0.03;
 export const WARNING_DISTANCE_LIMIT_M = 200;
+export const MIN_TARGET_DISTANCE_KM = 1;
+export const MAX_TARGET_DISTANCE_KM = 20;
+export const DEFAULT_TARGET_DISTANCE_KM = 5;
 
 const EARTH_RADIUS_M = 6_371_000;
 const rad = (degrees: number) => (degrees * Math.PI) / 180;
+
+export function normalizeTargetDistanceKm(value: number): number {
+  if (!Number.isFinite(value)) return DEFAULT_TARGET_DISTANCE_KM;
+  return Math.min(MAX_TARGET_DISTANCE_KM, Math.max(MIN_TARGET_DISTANCE_KM, Math.round(value)));
+}
 
 export function distanceM(a: LngLat, b: LngLat): number {
   const latDelta = rad(b[1] - a[1]);

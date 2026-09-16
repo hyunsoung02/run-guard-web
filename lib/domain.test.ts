@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { acceptRunningPoint, distanceAccuracyScore, formatPace, isLocationUsable, recommendationScore } from './domain';
+import { acceptRunningPoint, distanceAccuracyScore, formatPace, isLocationUsable, normalizeTargetDistanceKm, recommendationScore } from './domain';
 
 const point = { latitude: 37.5, longitude: 127, accuracyM: 10, altitudeM: null, speedMps: null, headingDegrees: null, timestampMs: Date.now() };
 
@@ -17,5 +17,11 @@ describe('RUN Guard shared domain', () => {
   });
   it('does not claim pace from a tiny sample', () => {
     expect(formatPace(10, 20)).toBe('--′--″');
+  });
+  it('normalizes target distance to whole kilometers from 1 through 20', () => {
+    expect(normalizeTargetDistanceKm(-4)).toBe(1);
+    expect(normalizeTargetDistanceKm(7.32)).toBe(7);
+    expect(normalizeTargetDistanceKm(20.8)).toBe(20);
+    expect(normalizeTargetDistanceKm(Number.NaN)).toBe(5);
   });
 });
