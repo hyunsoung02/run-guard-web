@@ -100,7 +100,8 @@
   .home-panel {
     display: flex;
     flex-direction: column;
-    overflow: auto;
+    overflow: hidden;
+    overscroll-behavior: none;
     background: linear-gradient(180deg, #f1f3f1 0%, #f7f8f5 100%);
   }
 
