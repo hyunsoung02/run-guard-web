@@ -21,11 +21,10 @@
   .chat-history{gap:15px;padding-top:4px}.chat-message{font-size:.91rem;line-height:1.6}.chat-message.user{max-width:86%}.chat-message.user>p{padding:10px 14px;border-radius:18px 18px 5px 18px}.chat-message.assistant{max-width:100%;width:100%}.chat-message.assistant>p{padding:5px 2px;background:transparent;border-radius:0;color:#252820}.typing{background:transparent;padding:9px 2px;border-radius:0}
   .plan-card{margin-top:11px;padding:16px 2px 4px 14px;border:0;border-left:3px solid var(--lime);border-radius:0;box-shadow:none}.plan-heading>span{font-size:.76rem}.plan-heading h3{font-size:1.06rem;margin-top:9px}.plan-heading p{font-size:.82rem;line-height:1.5}.plan-sessions{margin-top:14px;gap:0}.plan-sessions>div{grid-template-columns:58px 1fr;gap:10px;padding:11px 0;border-top:1px solid #e7e9e2}.plan-sessions>div>span{font-size:.84rem}.plan-sessions strong{font-size:.88rem}.plan-sessions small{font-size:.76rem;line-height:1.45;margin-top:2px}.plan-card .safety-note{margin-bottom:0}
   .ai-disclaimer{margin:18px 0 4px;font-size:.7rem;line-height:1.45}.chat-input{bottom:calc(var(--mobile-nav-height) + env(safe-area-inset-bottom));margin:0 -18px;padding:14px 18px 10px;background:linear-gradient(transparent,#f3f3f3 25%);z-index:12}.chat-input input{min-height:50px;border-color:#e5e6e1;border-radius:17px;padding:13px 15px;font-size:16px;box-shadow:0 4px 14px rgba(21,27,9,.04)}.chat-input input:focus{border-color:#b9cc84;box-shadow:0 0 0 3px rgba(178,243,0,.18)}.chat-input button{width:50px;min-width:50px;border-radius:17px}.chat-input button:active{transform:scale(.96)}
-  .app-shell:has(.chat-input input:focus) .bottom-nav{transform:translateY(110%)}.app-shell:has(.chat-input input:focus) .chat-input{bottom:0}
 }
 
 @media(max-width:340px){.bottom-nav{padding-left:12px;padding-right:12px}.center-run>span{width:84px;height:84px;top:-40px}.location-status{font-size:.64rem;padding:6px 7px}.quick-prompts button{font-size:.69rem;padding-inline:9px}.location-prompt{padding-left:18px;padding-right:18px}}
 
 @media(min-width:768px){.location-status{font-size:.65rem;padding:6px 7px}.location-prompt-backdrop{align-items:center;padding:24px}.location-prompt{border-radius:26px;padding:24px}}
 .location-prompt{width:100%;max-width:480px;min-width:0;overflow:hidden}
-@media(max-width:767px){.chat-input{position:relative;bottom:auto;margin-top:8px}.app-shell:has(.chat-input input:focus) .chat-input{bottom:auto}}
+@media(max-width:767px){.chat-input{position:relative;bottom:auto;margin-top:8px}}
