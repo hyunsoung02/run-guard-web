@@ -38,6 +38,7 @@ export default function RunGuardApp() {
   const [searchText, setSearchText] = useState('');
   const [searching, setSearching] = useState(false);
   const [places, setPlaces] = useState<Place[]>([]);
+  const [selectedPlace, setSelectedPlace] = useState<Place | null>(null);
   const [searchError, setSearchError] = useState('');
   const [records, setRecords] = useState<RunningRecord[]>([]);
   const [selectedRecord, setSelectedRecord] = useState<RunningRecord | null>(null);
@@ -136,7 +137,7 @@ export default function RunGuardApp() {
     if (!navigator.geolocation) { setLocationState('unavailable'); setLocationPromptReason('gate'); return; }
     setLocationState('checking');
     navigator.geolocation.getCurrentPosition((position) => {
-      const point = toPoint(position); setLocation(point);
+      const point = toPoint(position); setLocation(point); setSelectedPlace(null);
       if (!isLocationUsable(point)) { setLocationState('low-accuracy'); setLocationPromptReason('gate'); return; }
       gpsLocationRef.current = point; setLocationState('granted'); setLocationPromptReason(null);
       try { localStorage.setItem(LOCATION_GRANTED_HINT_KEY, '1'); } catch { /* storage can be unavailable */ }
@@ -186,7 +187,7 @@ export default function RunGuardApp() {
   }
 
   function resetRouteDraft() {
-    setSearchText(''); setPlaces([]); setSearchError(''); setSearching(false); setDistanceKm(5);
+    setSearchText(''); setPlaces([]); setSelectedPlace(null); setSearchError(''); setSearching(false); setDistanceKm(5);
     const gpsLocation = gpsLocationRef.current;
     setLocation(gpsLocation); setLocationState(gpsLocation && isLocationUsable(gpsLocation) ? 'granted' : 'unknown');
   }
@@ -228,11 +229,31 @@ export default function RunGuardApp() {
     } catch (error) { setRouteStatus('error'); setRouteError(error instanceof Error ? error.message : '코스를 만들지 못했습니다.'); }
   }
 
+  function selectPlace(place: Place, keepResults = false) {
+    const point: LocationPoint = { latitude: place.latitude, longitude: place.longitude, accuracyM: 0, altitudeM: null, speedMps: null, headingDegrees: null, timestampMs: Date.now() };
+    resetRouteResult(); setLocation(point); setSelectedPlace(place); setSearchText(place.name); setSearchError('');
+    if (!keepResults) setPlaces([]);
+  }
+
   async function searchPlaces() {
-    if (!location || !searchText.trim() || searching) return;
-    setSearching(true); setSearchError('');
-    try { const response = await fetch('/api/search', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ query: searchText, longitude: location.longitude, latitude: location.latitude }) }); const data = await response.json(); if (!response.ok) throw new Error(data.error); setPlaces(data.places); }
-    catch (error) { setSearchError(error instanceof Error ? error.message : '장소를 검색하지 못했습니다.'); }
+    const query = searchText.trim();
+    if (!query || searching) return;
+    setSearching(true); setSearchError(''); setPlaces([]);
+    if (process.env.NODE_ENV !== 'production') console.info('[PLACE_SEARCH]', { query, stage: 'request-start' });
+    try {
+      const response = await fetch('/api/search', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ query, ...(location ? { longitude: location.longitude, latitude: location.latitude } : {}) }) });
+      if (process.env.NODE_ENV !== 'production') console.info('[PLACE_SEARCH]', { query, stage: 'response', status: response.status });
+      const data = await response.json() as { places?: Place[]; error?: string };
+      if (!response.ok) throw new Error(data.error || '장소 검색 중 오류가 발생했습니다.');
+      const validPlaces = Array.isArray(data.places) ? data.places.filter((place) => Number.isFinite(place.longitude) && Number.isFinite(place.latitude)) : [];
+      if (process.env.NODE_ENV !== 'production') console.info('[PLACE_SEARCH]', { query, stage: 'parsed', resultCount: validPlaces.length });
+      if (!validPlaces.length) { setSearchError('검색 결과를 찾을 수 없습니다.'); return; }
+      setPlaces(validPlaces); selectPlace(validPlaces[0], true);
+    }
+    catch (error) {
+      if (process.env.NODE_ENV !== 'production') console.error('[PLACE_SEARCH]', { query, stage: 'error', message: error instanceof Error ? error.message : 'Unknown error' });
+      setSearchError('장소 검색 중 오류가 발생했습니다.');
+    }
     finally { setSearching(false); }
   }
 
@@ -272,17 +293,17 @@ export default function RunGuardApp() {
     finally { setAiLoading(false); }
   }
 
-  const locationError = locationState === 'denied' ? { title: '위치 권한이 꺼져 있습니다.', body: 'RUN Guard의 코스 추천을 사용하려면 브라우저 설정에서 위치 접근을 허용해주세요.' } : locationState === 'low-accuracy' ? { title: '현재 위치 정확도가 낮습니다.', body: '탁 트인 곳으로 이동하거나 GPS 수신이 원활한 장소에서 다시 확인해주세요.' } : locationState === 'unavailable' ? { title: '현재 위치를 확인하지 못했습니다.', body: '기기의 위치 서비스와 네트워크 상태를 확인한 뒤 다시 시도해주세요.' } : null;
-  const locationStatusLabel = locationState === 'granted' ? 'GPS 연결됨' : locationState === 'checking' ? '위치 확인 중' : locationState === 'low-accuracy' ? '정확도 낮음' : '위치 설정 필요';
+  const locationError = selectedPlace ? null : locationState === 'denied' ? { title: '위치 권한이 꺼져 있습니다.', body: 'RUN Guard의 코스 추천을 사용하려면 브라우저 설정에서 위치 접근을 허용해주세요.' } : locationState === 'low-accuracy' ? { title: '현재 위치 정확도가 낮습니다.', body: '탁 트인 곳으로 이동하거나 GPS 수신이 원활한 장소에서 다시 확인해주세요.' } : locationState === 'unavailable' ? { title: '현재 위치를 확인하지 못했습니다.', body: '기기의 위치 서비스와 네트워크 상태를 확인한 뒤 다시 시도해주세요.' } : null;
+  const locationStatusLabel = selectedPlace ? '출발지 선택됨' : locationState === 'granted' ? 'GPS 연결됨' : locationState === 'checking' ? '위치 확인 중' : locationState === 'low-accuracy' ? '정확도 낮음' : '위치 설정 필요';
   const instruction = offRoute ? '경로에서 벗어났습니다. 표시된 코스로 돌아와 주세요.' : selectedCandidate?.navigationSteps[0]?.instruction ?? '표시된 코스를 따라 달려주세요.';
 
-  const header = (title: string, back?: () => void) => <header className="panel-header">{back && <button className="icon-button" onClick={back} aria-label="뒤로"><ArrowLeft /></button>}<div><span className="eyebrow">RUN Guard</span><h1>{title}</h1></div><span className={`location-status status-${locationState}`}><LocateFixed size={15} />{locationStatusLabel}</span></header>;
+  const header = (title: string, back?: () => void) => <header className="panel-header">{back && <button className="icon-button" onClick={back} aria-label="뒤로"><ArrowLeft /></button>}<div><span className="eyebrow">RUN Guard</span><h1>{title}</h1></div><span className={`location-status status-${selectedPlace ? 'granted' : locationState}`}><LocateFixed size={15} />{locationStatusLabel}</span></header>;
 
   const routePanel = <div className="panel-scroll">{header(routeStatus === 'ready' ? '추천 코스' : '코스 설정', handleRouteBack)}
-    <section className="route-setup-card"><label>출발 위치</label><div className="location-row"><span className="pin-box"><MapPin size={20} /></span><div><strong>{locationState === 'granted' ? '현재 위치' : locationStatusLabel}</strong><small>{location ? `정확도 약 ${Math.round(location.accuracyM ?? 0)}m` : 'GPS 위치를 사용합니다'}</small></div><button onClick={() => requestLocation()} disabled={locationState === 'checking'}><Crosshair size={18} />{locationState === 'checking' ? '확인 중' : '위치'}</button></div>
+    <section className="route-setup-card"><label>출발 위치</label><div className="location-row"><span className="pin-box"><MapPin size={20} /></span><div><strong>{selectedPlace?.name ?? (locationState === 'granted' ? '현재 위치' : locationStatusLabel)}</strong><small>{selectedPlace?.address || (location ? `정확도 약 ${Math.round(location.accuracyM ?? 0)}m` : 'GPS 위치를 사용합니다')}</small></div><button onClick={() => requestLocation()} disabled={locationState === 'checking'}><Crosshair size={18} />{locationState === 'checking' ? '확인 중' : '위치'}</button></div>
       {locationError && <div className="error-card"><CircleAlert /><div><strong>{locationError.title}</strong><p>{locationError.body}</p><button onClick={() => requestLocation()}>다시 확인</button></div></div>}
       <label>목표 거리</label><div className="distance-options">{([5, 7, 10] as const).map((value) => <button key={value} className={distanceKm === value ? 'active' : ''} onClick={() => setDistanceKm(value)}><strong>{value}</strong><span>km</span></button>)}</div>
-      <div className="search-box"><Search size={18}/><input value={searchText} onChange={(event) => setSearchText(event.target.value)} onKeyDown={(event) => event.key === 'Enter' && searchPlaces()} placeholder="공원, 카페, 출발 장소 검색"/><button onClick={searchPlaces} disabled={searching || !searchText.trim()}>{searching ? '검색 중' : '검색'}</button></div>{searchError && <p className="inline-error">{searchError}</p>}{places.length > 0 && <div className="place-results">{places.slice(0, 4).map((place) => <button key={place.id} onClick={() => { setLocation({ latitude: place.latitude, longitude: place.longitude, accuracyM: 0, altitudeM: null, speedMps: null, headingDegrees: null, timestampMs: Date.now() }); setPlaces([]); setSearchText(place.name); }}><MapPin size={16}/><span><strong>{place.name}</strong><small>{place.address}</small></span></button>)}</div>}
+      <div className="search-box"><Search size={18}/><input value={searchText} onChange={(event) => setSearchText(event.target.value)} onKeyDown={(event) => event.key === 'Enter' && searchPlaces()} placeholder="공원, 카페, 출발 장소 검색"/><button onClick={searchPlaces} disabled={searching || !searchText.trim()}>{searching ? '검색 중' : '검색'}</button></div>{searchError && <p className="inline-error" role="status">{searchError}</p>}{places.length > 0 && <div className="place-results">{places.slice(0, 4).map((place) => <button key={place.id} onClick={() => selectPlace(place)}><MapPin size={16}/><span><strong>{place.name}</strong><small>{place.address}</small></span></button>)}</div>}
       <button className="primary-button" onClick={generateRoute} disabled={routeStatus === 'loading'}>{routeStatus === 'loading' ? <><span className="spinner"/>코스를 만들고 있어요</> : '추천 코스 만들기'}</button>
     </section>
     {routeStatus === 'error' && <div className="error-card"><CircleAlert/><div><strong>코스를 만들지 못했어요.</strong><p>{routeError}</p><button onClick={generateRoute}>다시 생성</button></div></div>}
@@ -323,7 +344,7 @@ export default function RunGuardApp() {
     setLocationPromptReason(null);
   };
   const activePanel = view === 'route' ? routePanel : view === 'running' ? runningPanel : view === 'records' ? recordsPanel : view === 'coach' ? coachPanel : view === 'menu' ? menuPanel : homePanel;
-  return <main className={`app-shell view-${view}`}><aside className="function-panel">{activePanel}<BottomNav view={view} onChange={(next) => { setSelectedRecord(null); if (next === 'home') openRoute(); else setView(next); }}/></aside><section className="desktop-map"><div className="map-brand"><span className="brand-mark">RUN</span><strong>Guard</strong><small>{sessionStatus === 'running' ? '러닝 진행 중' : locationState === 'granted' ? '현재 위치 연결됨' : '나만의 러닝 코스'}</small></div><RunGuardMap location={location} candidate={mapCandidate} actualRoute={selectedRecord?.actualRoute ?? actualRoute} progressCoordinate={actualRoute.at(-1) ? [actualRoute.at(-1)!.longitude, actualRoute.at(-1)!.latitude] : null} followUser={view === 'running' && followUser} onFollowChange={setFollowUser}/>{view === 'running' && !followUser && location && <button className="recenter-button" onClick={() => setFollowUser(true)}><LocateFixed size={17}/>현재 위치로 돌아가기</button>}{view === 'home' && <div className="desktop-welcome"><span>RUN Guard</span><h2>내 위치에서 시작하는<br/>설명 가능한 러닝 코스</h2><p>목표 거리를 고르면 실제 보행 경로와 공공 안전 데이터를 규칙으로 비교합니다.</p><button className="primary-button" onClick={openRoute}><LocateFixed/>내 위치로 코스 찾기</button></div>}</section>{locationPromptReason && <LocationPrompt state={locationState} reason={locationPromptReason} onUseLocation={() => requestLocation()} onDismiss={dismissLocationPrompt}/>}</main>;
+  return <main className={`app-shell view-${view}`}><aside className="function-panel">{activePanel}{view !== 'coach' && <BottomNav view={view} onChange={(next) => { setSelectedRecord(null); if (next === 'home') openRoute(); else setView(next); }}/>}</aside><section className="desktop-map"><div className="map-brand"><span className="brand-mark">RUN</span><strong>Guard</strong><small>{sessionStatus === 'running' ? '러닝 진행 중' : locationState === 'granted' ? '현재 위치 연결됨' : '나만의 러닝 코스'}</small></div><RunGuardMap location={location} candidate={mapCandidate} actualRoute={selectedRecord?.actualRoute ?? actualRoute} progressCoordinate={actualRoute.at(-1) ? [actualRoute.at(-1)!.longitude, actualRoute.at(-1)!.latitude] : null} followUser={view === 'running' && followUser} onFollowChange={setFollowUser}/>{view === 'running' && !followUser && location && <button className="recenter-button" onClick={() => setFollowUser(true)}><LocateFixed size={17}/>현재 위치로 돌아가기</button>}{view === 'home' && <div className="desktop-welcome"><span>RUN Guard</span><h2>내 위치에서 시작하는<br/>설명 가능한 러닝 코스</h2><p>목표 거리를 고르면 실제 보행 경로와 공공 안전 데이터를 규칙으로 비교합니다.</p><button className="primary-button" onClick={openRoute}><LocateFixed/>내 위치로 코스 찾기</button></div>}</section>{locationPromptReason && <LocationPrompt state={locationState} reason={locationPromptReason} onUseLocation={() => requestLocation()} onDismiss={dismissLocationPrompt}/>}</main>;
 }
 
 function BottomNav({ view, onChange }: { view: AppView; onChange: (view: AppView | 'home') => void }) {
