@@ -113,6 +113,20 @@ export default function RunGuardApp() {
   useEffect(() => () => { if (watchId.current !== null) navigator.geolocation.clearWatch(watchId.current); }, []);
 
   useEffect(() => {
+    const viewport = window.visualViewport;
+    if (!viewport) return;
+    const syncViewportHeight = () => document.documentElement.style.setProperty('--visual-viewport-height', `${viewport.height}px`);
+    syncViewportHeight();
+    viewport.addEventListener('resize', syncViewportHeight);
+    viewport.addEventListener('scroll', syncViewportHeight);
+    return () => {
+      viewport.removeEventListener('resize', syncViewportHeight);
+      viewport.removeEventListener('scroll', syncViewportHeight);
+      document.documentElement.style.removeProperty('--visual-viewport-height');
+    };
+  }, []);
+
+  useEffect(() => {
     if (sessionStatus !== 'running' || startedAtMs === null) return;
     const timer = window.setInterval(() => setElapsedSeconds(Math.max(0, Math.floor((Date.now() - startedAtMs - pausedDurationMs) / 1000))), 1000);
     return () => window.clearInterval(timer);
@@ -301,7 +315,7 @@ export default function RunGuardApp() {
 
   const menuPanel = <div className="panel-scroll">{header('메뉴')}<div className="menu-profile"><Image src="/run-guard/character/main_character.png" alt="" width={90} height={90}/><div><strong>RUN Guard 러너</strong><span>로그인 없이 기기에 안전하게 저장돼요</span></div></div><section className="menu-section"><h2>러닝 설정</h2><button onClick={() => setVoiceEnabled((value) => !value)}><span><Mic/>음성 길안내</span><em className={voiceEnabled ? 'toggle on' : 'toggle'}><i/></em></button><button onClick={() => setView('records')}><span><Timer/>이전 기록</span><ChevronRight/></button></section><section className="menu-section"><h2>데이터</h2><button className="danger" onClick={() => { if (confirm('저장된 러닝 기록을 모두 삭제할까요?')) setRecords([]); }}><span><Trash2/>러닝 기록 모두 삭제</span></button></section><div className="truth-card"><ShieldCheck/><div><strong>설명 가능한 RUN Guard</strong><p>경로·거리·안전도는 규칙 기반으로 계산하고, Gemini는 대화형 맞춤 코칭에만 사용합니다.</p></div></div></div>;
 
-  const homePanel = <div className="home-panel"><div className="home-brand"><span className="brand-mark">RUN</span><span>Guard</span></div><div className="home-art"><Image src="/run-guard/home/main_hero_background.png" alt="달릴 준비를 하는 RUN Guard 캐릭터" fill priority sizes="(max-width: 767px) 100vw, 420px"/></div><div className="home-copy"><p>{records.length ? `이번 주 ${latestWeeklyKm.toFixed(1)}km 달렸어요` : '오늘도 함께 달려볼까요?'}</p><Image src="/run-guard/home/run_logo.png" alt="RUN" width={124} height={70}/><div className="goal-progress"><span style={{ width: `${Math.min(100, latestWeeklyKm/15*100)}%`}}/><strong>{latestWeeklyKm.toFixed(2)} / 15.00 KM</strong></div><small>{Math.max(0,15-latestWeeklyKm).toFixed(2)}KM 남았어요! 조금만 더 파이팅!!</small></div></div>;
+  const homePanel = <div className="home-panel"><header className="home-header"><div className="home-brand"><span className="brand-mark">RUN</span><span>Guard</span></div></header><section className="home-hero"><p className="speech-bubble">{records.length ? `이번 주 ${latestWeeklyKm.toFixed(1)}km 달렸어요` : '오늘도 함께 달려볼까요?'}</p><div className="home-art"><Image src="/run-guard/home/main_hero_background.png" alt="달릴 준비를 하는 RUN Guard 캐릭터" width={1125} height={2436} priority sizes="(max-width: 767px) 78vw, 300px"/></div><div className="goal-progress"><span style={{ width: `${Math.min(100, latestWeeklyKm/15*100)}%`}}/><strong>{latestWeeklyKm.toFixed(2)} / 15.00 KM</strong></div><p className="weekly-message"><strong>{Math.max(0,15-latestWeeklyKm).toFixed(2)}KM 남았어요!</strong><span>조금만 더 파이팅!!</span></p></section></div>;
 
   const dismissLocationPrompt = () => {
     try { sessionStorage.setItem(LOCATION_DISMISSED_KEY, '1'); } catch { /* session storage can be unavailable */ }
@@ -322,7 +336,7 @@ function LocationPrompt({ state, reason, onUseLocation, onDismiss }: { state: Lo
   const unavailable = state === 'unavailable';
   const title = denied ? '위치 권한이 꺼져 있습니다' : lowAccuracy ? '위치를 더 정확히 확인할게요' : unavailable ? '현재 위치를 확인하지 못했어요' : reason === 'gate' ? '러닝 코스를 만들려면 위치가 필요해요' : '현재 위치에서 달려볼까요?';
   const body = denied ? 'RUN Guard의 코스 추천을 사용하려면 브라우저 설정에서 이 사이트의 위치 접근을 허용해주세요.' : lowAccuracy ? '탁 트인 곳으로 이동한 뒤 다시 확인하면 더 정확한 러닝 코스를 만들 수 있어요.' : unavailable ? '기기의 위치 서비스와 네트워크 상태를 확인한 뒤 다시 시도해주세요.' : 'RUN Guard는 현재 위치를 기준으로 5·7·10km 러닝 코스를 추천합니다.';
-  return <div className="location-prompt-backdrop" role="presentation"><section className="location-prompt" role="dialog" aria-modal="true" aria-labelledby="location-prompt-title"><span className="location-prompt-icon"><LocateFixed size={26}/></span><div><span className="eyebrow">LOCATION</span><h2 id="location-prompt-title">{title}</h2><p>{body}</p>{denied && <small>iPhone Safari: 주소창의 페이지 설정에서 ‘위치’를 허용한 뒤 다시 확인해주세요.</small>}</div><button className="primary-button" onClick={onUseLocation} disabled={checking}>{checking ? <><span className="spinner"/>위치 확인 중</> : denied || lowAccuracy || unavailable ? '다시 확인' : '현재 위치 사용'}</button><button className="location-later" onClick={onDismiss}>{reason === 'entry' ? '나중에' : '닫기'}</button></section></div>;
+  return <div className="location-prompt-backdrop" role="presentation"><section className="location-prompt" role="dialog" aria-modal="true" aria-labelledby="location-prompt-title"><span className="location-prompt-icon"><LocateFixed size={26}/></span><div><span className="eyebrow">LOCATION</span><h2 id="location-prompt-title">{title}</h2><p>{body}</p>{denied && <small>Android Chrome: 주소창의 사이트 정보 → 권한 → 위치 → 허용으로 변경한 뒤 다시 확인해주세요. iPhone에서는 브라우저의 사이트 설정에서 위치를 허용할 수 있어요.</small>}</div><button className="primary-button" onClick={onUseLocation} disabled={checking}>{checking ? <><span className="spinner"/>위치 확인 중</> : denied || lowAccuracy || unavailable ? '다시 확인' : '현재 위치 사용'}</button><button className="location-later" onClick={onDismiss}>{reason === 'entry' ? '나중에' : '닫기'}</button></section></div>;
 }
 
 function RecordDetail({ record }: { record: RunningRecord }) {
