@@ -58,7 +58,22 @@
     box-shadow: 0 -5px 18px rgba(21, 27, 9, 0.07);
   }
 
+  .bottom-nav::before {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: -39px;
+    z-index: 0;
+    width: 94px;
+    height: 94px;
+    border-radius: 50%;
+    background: #fff;
+    transform: translateX(-50%);
+  }
+
   .bottom-nav > button {
+    position: relative;
+    z-index: 1;
     min-height: 48px;
     color: #777a72;
   }
@@ -76,8 +91,10 @@
     top: -42px;
     width: 76px;
     height: 76px;
-    border-width: 6px;
-    filter: drop-shadow(0 6px 7px rgba(0, 0, 0, 0.15));
+    z-index: 2;
+    border: 0;
+    box-shadow: 0 7px 14px rgba(91, 126, 0, 0.22);
+    filter: none;
   }
 
   .home-panel {
@@ -141,19 +158,21 @@
     position: relative;
     inset: auto;
     flex: 0 1 auto;
-    width: clamp(220px, 72vw, 300px);
-    height: clamp(235px, 38dvh, 340px);
-    overflow: hidden;
-    border-radius: 38% 38% 30% 30%;
+    width: clamp(170px, 50vw, 215px);
+    height: auto;
+    overflow: visible;
   }
 
-  .home-art img {
-    position: absolute;
-    left: 0;
-    top: -48%;
+  .home-art .home-mobile-mascot {
+    position: static;
+    display: block;
     width: 100%;
     height: auto;
     object-fit: contain;
+  }
+
+  .home-desktop-art {
+    display: none;
   }
 
   .goal-progress {
@@ -334,12 +353,7 @@
   }
 
   .home-art {
-    width: clamp(195px, 57vw, 235px);
-    height: clamp(180px, 29dvh, 215px);
-  }
-
-  .home-art img {
-    top: -52%;
+    width: clamp(158px, 46vw, 182px);
   }
 
   .goal-progress {
@@ -390,6 +404,14 @@
     height: 100%;
     object-fit: cover;
     object-position: center top;
+  }
+
+  .home-mobile-mascot {
+    display: none;
+  }
+
+  .home-desktop-art {
+    display: block;
   }
 
   .speech-bubble {

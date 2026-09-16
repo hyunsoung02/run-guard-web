@@ -315,7 +315,22 @@ export default function RunGuardApp() {
 
   const menuPanel = <div className="panel-scroll">{header('메뉴')}<div className="menu-profile"><Image src="/run-guard/character/main_character.png" alt="" width={90} height={90}/><div><strong>RUN Guard 러너</strong><span>로그인 없이 기기에 안전하게 저장돼요</span></div></div><section className="menu-section"><h2>러닝 설정</h2><button onClick={() => setVoiceEnabled((value) => !value)}><span><Mic/>음성 길안내</span><em className={voiceEnabled ? 'toggle on' : 'toggle'}><i/></em></button><button onClick={() => setView('records')}><span><Timer/>이전 기록</span><ChevronRight/></button></section><section className="menu-section"><h2>데이터</h2><button className="danger" onClick={() => { if (confirm('저장된 러닝 기록을 모두 삭제할까요?')) setRecords([]); }}><span><Trash2/>러닝 기록 모두 삭제</span></button></section><div className="truth-card"><ShieldCheck/><div><strong>설명 가능한 RUN Guard</strong><p>경로·거리·안전도는 규칙 기반으로 계산하고, Gemini는 대화형 맞춤 코칭에만 사용합니다.</p></div></div></div>;
 
-  const homePanel = <div className="home-panel"><header className="home-header"><div className="home-brand"><span className="brand-mark">RUN</span><span>Guard</span></div></header><section className="home-hero"><p className="speech-bubble">{records.length ? `이번 주 ${latestWeeklyKm.toFixed(1)}km 달렸어요` : '오늘도 함께 달려볼까요?'}</p><div className="home-art"><Image src="/run-guard/home/main_hero_background.png" alt="달릴 준비를 하는 RUN Guard 캐릭터" width={1125} height={2436} priority sizes="(max-width: 767px) 78vw, 300px"/></div><div className="goal-progress"><span style={{ width: `${Math.min(100, latestWeeklyKm/15*100)}%`}}/><strong>{latestWeeklyKm.toFixed(2)} / 15.00 KM</strong></div><p className="weekly-message"><strong>{Math.max(0,15-latestWeeklyKm).toFixed(2)}KM 남았어요!</strong><span>조금만 더 파이팅!!</span></p></section></div>;
+  const homePanel = (
+    <div className="home-panel">
+      <header className="home-header">
+        <div className="home-brand"><span className="brand-mark">RUN</span><span>Guard</span></div>
+      </header>
+      <section className="home-hero">
+        <p className="speech-bubble">{records.length ? `이번 주 ${latestWeeklyKm.toFixed(1)}km 달렸어요` : '오늘도 함께 달려볼까요?'}</p>
+        <div className="home-art">
+          <Image className="home-mobile-mascot" src="/run-guard/character/loading_character.png" alt="달리는 RUN Guard 전신 캐릭터" width={541} height={544} loading="eager" sizes="(max-width: 767px) 55vw, 1px"/>
+          <Image className="home-desktop-art" src="/run-guard/home/main_hero_background.png" alt="" width={1125} height={2436} priority sizes="(min-width: 768px) 352px, 1px"/>
+        </div>
+        <div className="goal-progress"><span style={{ width: `${Math.min(100, latestWeeklyKm/15*100)}%`}}/><strong>{latestWeeklyKm.toFixed(2)} / 15.00 KM</strong></div>
+        <p className="weekly-message"><strong>{Math.max(0,15-latestWeeklyKm).toFixed(2)}KM 남았어요!</strong><span>조금만 더 파이팅!!</span></p>
+      </section>
+    </div>
+  );
 
   const dismissLocationPrompt = () => {
     try { sessionStorage.setItem(LOCATION_DISMISSED_KEY, '1'); } catch { /* session storage can be unavailable */ }
