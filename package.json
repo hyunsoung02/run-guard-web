@@ -1,0 +1,33 @@
+{
+  "name": "run-guard-web",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "predev": "node ./scripts/copy-maplibre-worker.mjs",
+    "dev": "next dev",
+    "prebuild": "node ./scripts/copy-maplibre-worker.mjs",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint . --max-warnings=0",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "lucide-react": "^0.468.0",
+    "maplibre-gl": "^6.9.1",
+    "next": "^16.0.0",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "@eslint/eslintrc": "^3.2.0",
+    "@types/node": "^22.10.5",
+    "@types/react": "^19.0.3",
+    "@types/react-dom": "^19.0.2",
+    "eslint": "^9.17.0",
+    "eslint-config-next": "^16.0.0",
+    "typescript": "^5.7.2",
+    "vitest": "^5.0.1"
+  }
+}
