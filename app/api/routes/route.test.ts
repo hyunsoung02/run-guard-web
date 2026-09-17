@@ -54,4 +54,20 @@ describe('POST /api/routes target distance', () => {
     expect(response.status).toBe(400);
     expect(fetchMock).not.toHaveBeenCalled();
   });
+
+  it('stops immediately when ORS rate limits the request', async () => {
+    process.env.ORS_API_KEY = 'test-key';
+    const fetchMock = vi.fn(async () => new Response(null, { status: 429 }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const response = await POST(requestFor(5000));
+    const data = await response.json() as { error: string; code: string };
+
+    expect(response.status).toBe(429);
+    expect(data).toEqual({
+      error: '경로 요청이 잠시 많습니다. 잠시 후 다시 시도해 주세요.',
+      code: 'RATE_LIMITED',
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
 });

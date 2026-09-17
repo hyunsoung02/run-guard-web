@@ -32,7 +32,16 @@ export async function POST(request: Request) {
       const turnaround = destinationPoint(start, (targetDistanceM / 2) * radiusScale, bearings[variant]);
       try {
         const response = await fetch('https://api.openrouteservice.org/v2/directions/foot-walking/geojson', { method: 'POST', headers: { Authorization: key, 'Content-Type': 'application/json' }, body: JSON.stringify({ coordinates: [start, turnaround, start], instructions: true, geometry_simplify: false }), signal: AbortSignal.timeout(15000) });
-        if (!response.ok) { logRouteDiagnostic(response.status, 'ors_error', { variant: variant + 1, attempt: attempt + 1 }); continue; }
+        if (!response.ok) {
+          logRouteDiagnostic(response.status, 'ors_error', { variant: variant + 1, attempt: attempt + 1 });
+          if (response.status === 429) {
+            return NextResponse.json(
+              { error: '경로 요청이 잠시 많습니다. 잠시 후 다시 시도해 주세요.', code: 'RATE_LIMITED' },
+              { status: 429 },
+            );
+          }
+          continue;
+        }
         const data = await response.json() as { features?: Array<{ geometry?: { coordinates?: LngLat[] }; properties?: { summary?: { distance?: number; duration?: number }; segments?: Array<{ steps?: Array<{ instruction?: string; distance?: number; type?: number; way_points?: [number, number] }> }> } }> };
         const feature = data.features?.[0];
         const coordinates = feature?.geometry?.coordinates;
