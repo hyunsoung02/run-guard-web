@@ -4,19 +4,18 @@ import dynamic from 'next/dynamic';
 import Image from 'next/image';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
-import { ArrowLeft, ChevronRight, CircleAlert, Crosshair, LocateFixed, MapPin, Menu, Mic, MicOff, Pause, Play, RotateCcw, Search, Send, ShieldCheck, Square, Timer, Trash2 } from 'lucide-react';
+import { ArrowLeft, ChevronRight, CircleAlert, Crosshair, ExternalLink, Github, LocateFixed, MapPin, Menu, MessageSquare, Mic, MicOff, Pause, Play, RotateCcw, Search, Send, ShieldCheck, Square, Timer, Trash2 } from 'lucide-react';
 import { acceptRunningPoint, createSplits, DEFAULT_TARGET_DISTANCE_KM, distanceM, formatClock, formatPace, isLocationUsable, MAX_TARGET_DISTANCE_KM, MIN_TARGET_DISTANCE_KM, normalizeTargetDistanceKm, OFF_ROUTE_DISTANCE_M } from '@/lib/domain';
+import { PROJECT_GITHUB_URL, removeAllRunGuardData, removeCoachConversation, removeRunningRecords, RUN_GUARD_STORAGE_KEYS } from '@/lib/runGuardStorage';
 import type { AppView, ChatMessage, CoachPlan, LngLat, LocationPoint, RouteCandidate, RunningRecord, SessionStatus } from '@/types/run-guard';
 
 const RunGuardMap = dynamic(() => import('./RunGuardMap'), { ssr: false, loading: () => <div className="map-loading"><Image src="/run-guard/character/loading_character.png" alt="" width={120} height={120} loading="eager" sizes="120px"/><span>지도를 준비하고 있어요</span></div> });
-const RECORD_KEY = 'run-guard-records-v1';
-const COACH_KEY = 'run-guard-coach-v1';
-const SETTINGS_KEY = 'run-guard-settings-v1';
 const LOCATION_DISMISSED_KEY = 'run-guard-location-dismissed';
 const LOCATION_GRANTED_HINT_KEY = 'run-guard-location-granted-v1';
 
 type LocationState = 'unknown' | 'promptable' | 'checking' | 'granted' | 'denied' | 'unavailable' | 'low-accuracy';
 type LocationPromptReason = 'entry' | 'gate';
+type DeleteAction = 'records' | 'coach' | 'all';
 type Place = { id: string; name: string; address: string; category: string; longitude: number; latitude: number; distanceM: number };
 
 const toPoint = (position: GeolocationPosition): LocationPoint => ({ latitude: position.coords.latitude, longitude: position.coords.longitude, accuracyM: position.coords.accuracy, altitudeM: position.coords.altitude, speedMps: position.coords.speed, headingDegrees: position.coords.heading, timestampMs: position.timestamp || Date.now() });
@@ -58,6 +57,9 @@ export default function RunGuardApp() {
   const [message, setMessage] = useState('');
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState('');
+  const [deleteAction, setDeleteAction] = useState<DeleteAction | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [feedback, setFeedback] = useState('');
   const watchId = useRef<number | null>(null);
   const sessionStatusRef = useRef<SessionStatus>('idle');
   const lastPointRef = useRef<LocationPoint | undefined>(undefined);
@@ -67,6 +69,8 @@ export default function RunGuardApp() {
   const qaScenarioRef = useRef<string | null>(null);
   const previousViewRef = useRef<AppView | null>(null);
   const chatEndRef = useRef<HTMLDivElement | null>(null);
+  const coachRequestRef = useRef<AbortController | null>(null);
+  const deletingRef = useRef(false);
 
   const selectedCandidate = useMemo(() => candidates.find((candidate) => candidate.id === selectedId) ?? null, [candidates, selectedId]);
   const mapCandidate = selectedRecord ? { id: selectedRecord.id, coordinates: selectedRecord.plannedRoute, distanceM: selectedRecord.distanceM, durationSeconds: selectedRecord.durationSeconds, distanceAccuracyScore: 100, safetyScore: null, recommendationScore: null, warningPoints: [], navigationSteps: [] } : selectedCandidate;
@@ -80,9 +84,9 @@ export default function RunGuardApp() {
   }, [actualRoute, selectedCandidate]);
 
   useEffect(() => {
-    setRecords(storageRead(RECORD_KEY, []));
-    const coach = storageRead<{ chat: ChatMessage[]; plan: CoachPlan | null }>(COACH_KEY, { chat: [], plan: null }); setChat(coach.chat); setPlan(coach.plan);
-    setVoiceEnabled(storageRead(SETTINGS_KEY, { voiceEnabled: true }).voiceEnabled);
+    setRecords(storageRead(RUN_GUARD_STORAGE_KEYS.records, []));
+    const coach = storageRead<{ chat: ChatMessage[]; plan: CoachPlan | null }>(RUN_GUARD_STORAGE_KEYS.coach, { chat: [], plan: null }); setChat(coach.chat); setPlan(coach.plan);
+    setVoiceEnabled(storageRead(RUN_GUARD_STORAGE_KEYS.settings, { voiceEnabled: true }).voiceEnabled);
     setStorageHydrated(true);
   }, []);
   useEffect(() => {
@@ -109,9 +113,14 @@ export default function RunGuardApp() {
       if (scenario === 'gps-follow') { setView('running'); setSessionStatus('running'); setStartedAtMs(Date.now()); }
     }
   }, []);
-  useEffect(() => { if (storageHydrated) storageWrite(RECORD_KEY, records); }, [records, storageHydrated]);
-  useEffect(() => { if (storageHydrated) storageWrite(COACH_KEY, { chat, plan }); }, [chat, plan, storageHydrated]);
-  useEffect(() => { if (storageHydrated) storageWrite(SETTINGS_KEY, { voiceEnabled }); }, [voiceEnabled, storageHydrated]);
+  useEffect(() => { if (storageHydrated) storageWrite(RUN_GUARD_STORAGE_KEYS.records, records); }, [records, storageHydrated]);
+  useEffect(() => { if (storageHydrated) storageWrite(RUN_GUARD_STORAGE_KEYS.coach, { chat, plan }); }, [chat, plan, storageHydrated]);
+  useEffect(() => { if (storageHydrated) storageWrite(RUN_GUARD_STORAGE_KEYS.settings, { voiceEnabled }); }, [voiceEnabled, storageHydrated]);
+  useEffect(() => {
+    if (!feedback) return;
+    const timer = window.setTimeout(() => setFeedback(''), 3000);
+    return () => window.clearTimeout(timer);
+  }, [feedback]);
   useEffect(() => { runDistanceRef.current = runDistanceM; elapsedRef.current = elapsedSeconds; }, [runDistanceM, elapsedSeconds]);
   useEffect(() => { sessionStatusRef.current = sessionStatus; }, [sessionStatus]);
   useEffect(() => () => { if (watchId.current !== null) navigator.geolocation.clearWatch(watchId.current); }, []);
@@ -318,12 +327,41 @@ export default function RunGuardApp() {
   async function sendCoach(nextMessage = message) {
     const trimmed = nextMessage.trim(); if (!trimmed || aiLoading) return;
     const userMessage: ChatMessage = { id: `user-${Date.now()}`, role: 'user', text: trimmed }; const nextChat = [...chat, userMessage]; setChat(nextChat); setMessage(''); setAiLoading(true); setAiError('');
+    const controller = new AbortController(); coachRequestRef.current = controller;
     try {
       const recordContext = records.slice(0, 10).map((record) => ({ distanceKm: record.distanceM / 1000, durationSeconds: record.durationSeconds, averagePaceSecondsPerKm: record.averagePaceSecondsPerKm, date: new Date(record.startedAtMs).toISOString().slice(0, 10) }));
-      const response = await fetch('/api/ai-coach', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: trimmed, history: nextChat.slice(-12), records: recordContext, currentPlan: plan, targetDistanceKm: distanceKm }) }); const data = await response.json(); if (!response.ok) throw new Error(data.error);
+      const response = await fetch('/api/ai-coach', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: trimmed, history: nextChat.slice(-12), records: recordContext, currentPlan: plan, targetDistanceKm: distanceKm }), signal: controller.signal }); const data = await response.json(); if (!response.ok) throw new Error(data.error);
+      if (coachRequestRef.current !== controller) return;
       const assistant: ChatMessage = { id: `assistant-${Date.now()}`, role: 'assistant', text: data.plan.coachComment, plan: data.plan }; setPlan(data.plan); setChat((current) => [...current, assistant]);
-    } catch (error) { setAiError(error instanceof Error ? error.message : 'AI 코치를 불러오지 못했습니다.'); }
-    finally { setAiLoading(false); }
+    } catch (error) { if (!(error instanceof DOMException && error.name === 'AbortError')) setAiError(error instanceof Error ? error.message : 'AI 코치를 불러오지 못했습니다.'); }
+    finally { if (coachRequestRef.current === controller) { coachRequestRef.current = null; setAiLoading(false); } }
+  }
+
+  function clearCoachState() {
+    coachRequestRef.current?.abort(); coachRequestRef.current = null;
+    setChat([]); setPlan(null); setMessage(''); setAiError(''); setAiLoading(false);
+  }
+
+  function confirmDataDeletion() {
+    if (!deleteAction || deletingRef.current) return;
+    deletingRef.current = true; setDeleting(true);
+    try {
+      if (deleteAction === 'records') {
+        removeRunningRecords(localStorage); setRecords([]); setSelectedRecord(null);
+        setFeedback('러닝 기록을 삭제했어요.');
+      } else if (deleteAction === 'coach') {
+        removeCoachConversation(localStorage); clearCoachState();
+        setFeedback('AI 코치 대화를 삭제했어요.');
+      } else {
+        removeAllRunGuardData(localStorage, sessionStorage);
+        setRecords([]); setSelectedRecord(null); clearCoachState(); setVoiceEnabled(true);
+        setDistanceKm(DEFAULT_TARGET_DISTANCE_KM); resetRunningSession(); resetRouteResult();
+        setFeedback('모든 데이터를 삭제했어요.');
+      }
+      setDeleteAction(null);
+    } finally {
+      deletingRef.current = false; setDeleting(false);
+    }
   }
 
   const locationError = selectedPlace ? null : locationState === 'denied' ? { title: '위치 권한이 꺼져 있습니다.', body: 'RUN Guard의 코스 추천을 사용하려면 브라우저 설정에서 위치 접근을 허용해주세요.' } : locationState === 'low-accuracy' ? { title: '현재 위치 정확도가 낮습니다.', body: '탁 트인 곳으로 이동하거나 GPS 수신이 원활한 장소에서 다시 확인해주세요.' } : locationState === 'unavailable' ? { title: '현재 위치를 확인하지 못했습니다.', body: '기기의 위치 서비스와 네트워크 상태를 확인한 뒤 다시 시도해주세요.' } : null;
@@ -353,7 +391,7 @@ export default function RunGuardApp() {
 
   const coachPanel = <div className="coach-screen"><div className="panel-scroll coach-scroll">{header('AI 코치', handleCoachBack, 'coach-back-button')}<div className="coach-intro"><Image className="coach-mascot" src="/assets/coach-running-mascot.png" alt="달리는 RUN Guard AI 코치 캐릭터" width={1728} height={2304} loading="eager" sizes="110px"/><div><h2>이번 주,<br/>어떻게 달려볼까요?</h2><p>목표와 가능한 요일을 알려주시면<br/>나에게 맞는 러닝 플랜을 만들어드릴게요.</p></div></div><div className="quick-prompts">{[`${distanceKm}km 기록 단축`, '주 3회 꾸준히', '체력부터 천천히'].map((text) => <button key={text} onClick={() => sendCoach(text)} disabled={aiLoading}>{text}</button>)}</div>{records.length > 0 && <p className="context-note">최근 {Math.min(records.length,10)}회 기록 · 이번 주 {latestWeeklyKm.toFixed(1)}km를 코칭에 반영해요.</p>}<div className="chat-history" aria-live="polite">{chat.map((item) => <div key={item.id} className={`chat-message ${item.role}`}><p>{item.text}</p>{item.plan && <PlanCard plan={item.plan}/>}</div>)}{aiLoading && <div className="chat-message assistant typing"><span/><span/><span/> 계획을 만들고 있어요</div>}{aiError && <div className="ai-error"><CircleAlert/><span>{aiError}</span><button onClick={() => sendCoach(chat.at(-1)?.role === 'user' ? chat.at(-1)!.text : message)}><RotateCcw size={14}/>다시 시도</button></div>}<div ref={chatEndRef} aria-hidden="true"/></div><p className="ai-disclaimer">AI 코치는 일반적인 러닝 계획을 돕습니다. 의료 진단은 제공하지 않습니다.</p></div><div className="chat-input"><input value={message} onChange={(event) => setMessage(event.target.value)} onKeyDown={(event) => event.key === 'Enter' && sendCoach()} maxLength={800} placeholder="목표와 가능한 요일을 알려주세요" aria-label="AI 코치에게 메시지 입력"/><button onClick={() => sendCoach()} disabled={!message.trim() || aiLoading} aria-label="메시지 보내기"><Send/></button></div></div>;
 
-  const menuPanel = <div className="panel-scroll">{header('메뉴')}<div className="menu-profile"><Image src="/run-guard/character/main_character.png" alt="" width={90} height={90}/><div><strong>RUN Guard 러너</strong><span>로그인 없이 기기에 안전하게 저장돼요</span></div></div><section className="menu-section"><h2>러닝 설정</h2><button onClick={() => setVoiceEnabled((value) => !value)} aria-pressed={voiceEnabled}><span><Mic/>음성 길안내</span><em className={voiceEnabled ? 'toggle on' : 'toggle'} aria-hidden="true"><i/></em></button><button onClick={() => setView('records')}><span><Timer/>이전 기록</span><ChevronRight/></button></section><section className="menu-section"><h2>데이터</h2><button className="danger" onClick={() => { if (confirm('저장된 러닝 기록을 모두 삭제할까요?')) setRecords([]); }}><span><Trash2/>러닝 기록 모두 삭제</span></button></section><div className="truth-card"><ShieldCheck/><div><strong>설명 가능한 RUN Guard</strong><p>경로·거리·안전도는 규칙 기반으로 계산하고, Gemini는 대화형 맞춤 코칭에만 사용합니다.</p></div></div></div>;
+  const menuPanel = <div className="panel-scroll menu-panel">{header('메뉴')}<div className="menu-profile"><Image src="/assets/coach-running-mascot.png" alt="달리는 RUN Guard 캐릭터" width={1728} height={2304} loading="eager" sizes="88px"/><div><strong>RUN Guard 러너</strong><span>로그인 없이 기기에 안전하게 저장돼요</span></div></div><section className="menu-section"><h2>러닝 설정</h2><button onClick={() => setVoiceEnabled((value) => !value)} aria-pressed={voiceEnabled}><span><Mic/>음성 길안내</span><em className={voiceEnabled ? 'toggle on' : 'toggle'} aria-hidden="true"><i/></em></button><button onClick={() => setView('records')}><span><Timer/>이전 기록</span><ChevronRight/></button></section><section className="menu-section"><h2>프로젝트</h2><a className="menu-link" href={PROJECT_GITHUB_URL} target="_blank" rel="noopener noreferrer" aria-label="RUN Guard GitHub 저장소 새 탭에서 열기"><span><Github/><span className="menu-row-copy"><strong>GitHub 저장소</strong><small>소스코드와 구현 구조 보기</small></span></span><ExternalLink aria-hidden="true"/></a></section><section className="menu-section data-section"><h2>데이터</h2><button className="data-action danger" onClick={() => setDeleteAction('records')} aria-label="러닝 기록 삭제"><span><Trash2/><span className="menu-row-copy"><strong>러닝 기록 삭제</strong><small>저장된 러닝 기록을 모두 삭제합니다.</small></span></span></button><button className="data-action danger" onClick={() => setDeleteAction('coach')} aria-label="AI 코치 대화 삭제"><span><MessageSquare/><span className="menu-row-copy"><strong>AI 코치 대화 삭제</strong><small>저장된 AI 코치 대화를 모두 삭제합니다.</small></span></span></button><button className="data-action danger danger-all" onClick={() => setDeleteAction('all')} aria-label="모든 RUN Guard 데이터 삭제"><span><Trash2/><span className="menu-row-copy"><strong>모든 데이터 삭제</strong><small>RUN Guard에 저장된 모든 데이터를 초기화합니다.</small></span></span></button></section><div className="truth-card"><ShieldCheck/><div><strong>설명 가능한 RUN Guard</strong><p>경로·거리·안전도는 규칙 기반으로 계산하고, Gemini는 대화형 맞춤 코칭에만 사용합니다.</p></div></div></div>;
 
   const homePanel = (
     <div className="home-panel">
@@ -377,7 +415,35 @@ export default function RunGuardApp() {
     setLocationPromptReason(null);
   };
   const activePanel = view === 'route' ? routePanel : view === 'running' ? runningPanel : view === 'records' ? recordsPanel : view === 'coach' ? coachPanel : view === 'menu' ? menuPanel : homePanel;
-  return <main className={`app-shell view-${view}`}><aside className="function-panel">{activePanel}{view !== 'coach' && <BottomNav view={view} onChange={handleBottomNavigation}/>}</aside><section className="desktop-map"><div className="map-brand"><span className="brand-mark">RUN</span><strong>Guard</strong><small>{sessionStatus === 'running' ? '러닝 진행 중' : locationState === 'granted' ? '현재 위치 연결됨' : '나만의 러닝 코스'}</small></div><RunGuardMap location={location} candidate={mapCandidate} actualRoute={selectedRecord?.actualRoute ?? actualRoute} progressCoordinate={actualRoute.at(-1) ? [actualRoute.at(-1)!.longitude, actualRoute.at(-1)!.latitude] : null} followUser={view === 'running' && followUser} onFollowChange={setFollowUser}/>{view === 'running' && !followUser && location && <button className="recenter-button" onClick={() => setFollowUser(true)}><LocateFixed size={17}/>현재 위치로 돌아가기</button>}{view === 'home' && <div className="desktop-welcome"><span>RUN Guard</span><h2>내 위치에서 시작하는<br/>설명 가능한 러닝 코스</h2><p>목표 거리를 고르면 실제 보행 경로와 공공 안전 데이터를 규칙으로 비교합니다.</p><button className="primary-button" onClick={openRoute}><LocateFixed/>내 위치로 코스 찾기</button></div>}</section>{locationPromptReason && <LocationPrompt state={locationState} reason={locationPromptReason} onUseLocation={() => requestLocation()} onDismiss={dismissLocationPrompt}/>}</main>;
+  return <main className={`app-shell view-${view}`}><aside className="function-panel">{activePanel}{view !== 'coach' && <BottomNav view={view} onChange={handleBottomNavigation}/>}</aside><section className="desktop-map"><div className="map-brand"><span className="brand-mark">RUN</span><strong>Guard</strong><small>{sessionStatus === 'running' ? '러닝 진행 중' : locationState === 'granted' ? '현재 위치 연결됨' : '나만의 러닝 코스'}</small></div><RunGuardMap location={location} candidate={mapCandidate} actualRoute={selectedRecord?.actualRoute ?? actualRoute} progressCoordinate={actualRoute.at(-1) ? [actualRoute.at(-1)!.longitude, actualRoute.at(-1)!.latitude] : null} followUser={view === 'running' && followUser} onFollowChange={setFollowUser}/>{view === 'running' && !followUser && location && <button className="recenter-button" onClick={() => setFollowUser(true)}><LocateFixed size={17}/>현재 위치로 돌아가기</button>}{view === 'home' && <div className="desktop-welcome"><span>RUN Guard</span><h2>내 위치에서 시작하는<br/>설명 가능한 러닝 코스</h2><p>목표 거리를 고르면 실제 보행 경로와 공공 안전 데이터를 규칙으로 비교합니다.</p><button className="primary-button" onClick={openRoute}><LocateFixed/>내 위치로 코스 찾기</button></div>}</section>{locationPromptReason && <LocationPrompt state={locationState} reason={locationPromptReason} onUseLocation={() => requestLocation()} onDismiss={dismissLocationPrompt}/>} {deleteAction && <DeleteConfirmation action={deleteAction} deleting={deleting} onCancel={() => setDeleteAction(null)} onConfirm={confirmDataDeletion}/>} {feedback && <div className="data-feedback" role="status" aria-live="polite">{feedback}</div>}</main>;
+}
+
+const DELETE_COPY: Record<DeleteAction, { title: string; body: string; confirm: string }> = {
+  records: { title: '러닝 기록을 삭제할까요?', body: '저장된 모든 러닝 기록이 삭제됩니다. 삭제된 기록은 복구할 수 없습니다.', confirm: '삭제' },
+  coach: { title: 'AI 코치 대화를 삭제할까요?', body: '저장된 AI 코치 대화 내용이 모두 삭제됩니다. 삭제된 대화는 복구할 수 없습니다.', confirm: '삭제' },
+  all: { title: '모든 데이터를 삭제할까요?', body: '러닝 기록, AI 코치 대화, 설정 등 RUN Guard에 저장된 모든 로컬 데이터가 삭제됩니다. 삭제한 데이터는 복구할 수 없습니다.', confirm: '모두 삭제' },
+};
+
+function DeleteConfirmation({ action, deleting, onCancel, onConfirm }: { action: DeleteAction; deleting: boolean; onCancel: () => void; onConfirm: () => void }) {
+  const cancelRef = useRef<HTMLButtonElement | null>(null);
+  const dialogRef = useRef<HTMLElement | null>(null);
+  useEffect(() => {
+    const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    cancelRef.current?.focus();
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && !deleting) onCancel();
+      if (event.key !== 'Tab') return;
+      const buttons = dialogRef.current?.querySelectorAll<HTMLButtonElement>('button:not(:disabled)');
+      if (!buttons?.length) return;
+      const first = buttons[0]; const last = buttons[buttons.length - 1];
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => { document.removeEventListener('keydown', onKeyDown); previousFocus?.focus(); };
+  }, [deleting, onCancel]);
+  const copy = DELETE_COPY[action];
+  return <div className="delete-dialog-backdrop" role="presentation"><section ref={dialogRef} className="delete-dialog" role="alertdialog" aria-modal="true" aria-labelledby="delete-dialog-title" aria-describedby="delete-dialog-description"><span className="delete-dialog-icon"><Trash2 size={24}/></span><h2 id="delete-dialog-title">{copy.title}</h2><p id="delete-dialog-description">{copy.body}</p><div className="delete-dialog-actions"><button ref={cancelRef} onClick={onCancel} disabled={deleting}>취소</button><button className="confirm-delete" onClick={onConfirm} disabled={deleting}>{copy.confirm}</button></div></section></div>;
 }
 
 function BottomNav({ view, onChange }: { view: AppView; onChange: (view: AppView | 'home') => void }) {
