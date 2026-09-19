@@ -31,7 +31,7 @@ export async function POST(request: Request) {
     for (let attempt = 0; attempt < 3; attempt += 1) {
       const turnaround = destinationPoint(start, (targetDistanceM / 2) * radiusScale, bearings[variant]);
       try {
-        const response = await fetch('https://api.openrouteservice.org/v2/directions/foot-walking/geojson', { method: 'POST', headers: { Authorization: key, 'Content-Type': 'application/json' }, body: JSON.stringify({ coordinates: [start, turnaround, start], instructions: true, geometry_simplify: false }), signal: AbortSignal.timeout(15000) });
+        const response = await fetch('https://api.heigit.org/openrouteservice/v2/directions/foot-walking/geojson', { method: 'POST', headers: { Authorization: key, 'Content-Type': 'application/json' }, body: JSON.stringify({ coordinates: [start, turnaround, start], instructions: true, geometry_simplify: false }), signal: AbortSignal.timeout(15000) });
         if (!response.ok) {
           logRouteDiagnostic(response.status, 'ors_error', { variant: variant + 1, attempt: attempt + 1 });
           if (response.status === 429) {

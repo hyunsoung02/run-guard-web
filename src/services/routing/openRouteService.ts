@@ -68,7 +68,7 @@ export type WalkingRouteResult = {
 };
 
 const ORS_DIRECTIONS_URL =
-  'https://api.openrouteservice.org/v2/directions/foot-walking/geojson';
+  'https://api.heigit.org/openrouteservice/v2/directions/foot-walking/geojson';
 const ORS_REQUEST_TIMEOUT_MS = 15_000;
 
 function isRecord(

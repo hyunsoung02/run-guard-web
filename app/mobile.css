@@ -168,6 +168,21 @@ input:focus-visible {
   word-break: keep-all;
 }
 
+.estimated-time-note {
+  margin-top: -2px;
+  color: #858880 !important;
+  font-size: 0.68rem !important;
+  line-height: 1.5 !important;
+  word-break: keep-all;
+}
+
+.first-run-note {
+  padding: 0;
+  background: transparent;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
 .primary-button,
 .run-button,
 .location-row > button,
@@ -233,18 +248,31 @@ input:focus-visible {
 @media (max-width: 767px) {
   html,
   body {
-    height: 100%;
+    width: 100%;
+    height: var(--app-viewport-height, 100dvh);
     overflow: hidden;
+    overscroll-behavior: none;
     background: var(--paper);
   }
 
-  .app-shell,
-  .function-panel {
-    min-height: 100dvh;
+  body {
+    position: fixed;
+    inset: 0;
+  }
+
+  .app-shell {
+    position: fixed;
+    top: var(--app-viewport-offset-top, 0px);
+    left: 0;
+    width: 100%;
+    height: var(--app-viewport-height, 100dvh);
+    min-height: 0;
+    overflow: hidden;
   }
 
   .function-panel {
-    height: 100dvh;
+    min-height: 0;
+    height: 100%;
     display: flex;
     flex-direction: column;
     overflow: hidden;
@@ -263,6 +291,10 @@ input:focus-visible {
     padding: 0 18px 28px;
     overscroll-behavior: contain;
     -webkit-overflow-scrolling: touch;
+  }
+
+  .search-box input {
+    font-size: 16px;
   }
 
   .panel-header > div {
@@ -288,6 +320,10 @@ input:focus-visible {
     padding: 15px 24px max(8px, env(safe-area-inset-bottom));
     border-radius: 26px 26px 0 0;
     box-shadow: 0 -5px 18px rgba(21, 27, 9, 0.07);
+  }
+
+  .is-keyboard-open .bottom-nav {
+    display: none;
   }
 
   .bottom-nav::before {
@@ -566,9 +602,26 @@ input:focus-visible {
     padding-bottom: 28px;
   }
 
+  .view-route .panel-scroll {
+    padding-top: calc(var(--app-layout-viewport-height, 100dvh) * 0.38);
+    background: linear-gradient(
+      transparent calc(var(--app-layout-viewport-height, 100dvh) * 0.34),
+      var(--paper) calc(var(--app-layout-viewport-height, 100dvh) * 0.43)
+    );
+  }
+
+  .view-route .desktop-map,
+  .view-running .desktop-map {
+    top: var(--app-viewport-offset-top, 0px);
+    height: calc(var(--app-layout-viewport-height, 100dvh) * 0.45);
+  }
+
   .view-running .panel-scroll {
-    padding-top: 25dvh;
-    background: linear-gradient(transparent 21dvh, var(--paper) 30dvh);
+    padding-top: calc(var(--app-layout-viewport-height, 100dvh) * 0.25);
+    background: linear-gradient(
+      transparent calc(var(--app-layout-viewport-height, 100dvh) * 0.21),
+      var(--paper) calc(var(--app-layout-viewport-height, 100dvh) * 0.3)
+    );
   }
 }
 

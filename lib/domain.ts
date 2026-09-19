@@ -13,6 +13,10 @@ export const WARNING_DISTANCE_LIMIT_M = 200;
 export const MIN_TARGET_DISTANCE_KM = 1;
 export const MAX_TARGET_DISTANCE_KM = 20;
 export const DEFAULT_TARGET_DISTANCE_KM = 5;
+export const DEFAULT_RUNNING_PACE_SEC_PER_KM = 420;
+// Ignore damaged records outside a broad 2:00–20:00/km range while retaining slow run/walk sessions.
+export const MIN_REALISTIC_RUNNING_PACE_SEC_PER_KM = 120;
+export const MAX_REALISTIC_RUNNING_PACE_SEC_PER_KM = 1_200;
 
 const EARTH_RADIUS_M = 6_371_000;
 const rad = (degrees: number) => (degrees * Math.PI) / 180;
@@ -73,6 +77,34 @@ export function formatPace(distanceMeters: number, durationSeconds: number): str
   if (distanceMeters < 20 || durationSeconds <= 0) return '--′--″';
   const pace = durationSeconds / (distanceMeters / 1000);
   return `${Math.floor(pace / 60)}′${String(Math.round(pace % 60)).padStart(2, '0')}″`;
+}
+
+function isRealisticRunningPace(paceSecondsPerKm: number): boolean {
+  return Number.isFinite(paceSecondsPerKm)
+    && paceSecondsPerKm >= MIN_REALISTIC_RUNNING_PACE_SEC_PER_KM
+    && paceSecondsPerKm <= MAX_REALISTIC_RUNNING_PACE_SEC_PER_KM;
+}
+
+export function getEstimatedRunningPace(records: RunningRecord[]): number {
+  const recentRecords = [...records].sort((first, second) => {
+    const firstStartedAt = Number.isFinite(first.startedAtMs) ? first.startedAtMs : 0;
+    const secondStartedAt = Number.isFinite(second.startedAtMs) ? second.startedAtMs : 0;
+    return secondStartedAt - firstStartedAt;
+  });
+
+  for (const record of recentRecords) {
+    if (!Number.isFinite(record.distanceM) || record.distanceM <= 0
+      || !Number.isFinite(record.durationSeconds) || record.durationSeconds <= 0) continue;
+    const pace = record.durationSeconds / (record.distanceM / 1000);
+    if (isRealisticRunningPace(pace)) return pace;
+  }
+
+  return DEFAULT_RUNNING_PACE_SEC_PER_KM;
+}
+
+export function calculateEstimatedRunMinutes(distanceMeters: number, records: RunningRecord[]): number {
+  if (!Number.isFinite(distanceMeters) || distanceMeters <= 0) return 0;
+  return Math.max(1, Math.round((distanceMeters / 1000) * getEstimatedRunningPace(records) / 60));
 }
 
 export function createSplits(points: LocationPoint[], totalDistanceM: number, totalSeconds: number): RunningRecord['splits'] {

@@ -39,6 +39,10 @@ describe('POST /api/routes target distance', () => {
     expect(response.status).toBe(200);
     expect(data.candidates).toHaveLength(3);
     expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://api.heigit.org/openrouteservice/v2/directions/foot-walking/geojson',
+      expect.any(Object),
+    );
     for (const body of requestBodies) {
       expect(distanceM(body.coordinates[0], body.coordinates[1])).toBeCloseTo(targetDistanceM * 0.375, -1);
     }
